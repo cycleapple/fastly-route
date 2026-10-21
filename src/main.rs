@@ -98,6 +98,7 @@ impl App {
         style.visuals = egui::Visuals::light();
         style.visuals.override_text_color = Some(INK);
         style.visuals.panel_fill = Color32::from_rgb(247, 249, 246);
+        style.visuals.extreme_bg_color = Color32::from_rgb(239, 244, 240);
         style.visuals.selection.bg_fill = Color32::from_rgb(215, 235, 222);
         style.visuals.selection.stroke = egui::Stroke::new(1.0_f32, GREEN);
         style.spacing.item_spacing = Vec2::new(12., 10.);

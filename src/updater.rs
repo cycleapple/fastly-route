@@ -266,6 +266,51 @@ mod tests {
     fn live_update_check() {
         check(env!("CARGO_PKG_VERSION"), true).expect("Authenticated release check");
     }
+    #[test]
+    #[ignore = "Downloads the published update and tests replacement in an isolated child"]
+    fn live_update_download_and_replace() {
+        let update = check("0.1.0", true)
+            .unwrap()
+            .expect("v0.2+ release must be published");
+        let cancel = AtomicBool::new(false);
+        let sums = asset_bytes(&update.sums, 64 * 1024, &cancel).unwrap();
+        let expected = checksum(std::str::from_utf8(&sums).unwrap(), EXE).unwrap();
+        let bytes = asset_bytes(&update.exe, MAX_EXE, &cancel).unwrap();
+        verify_exe(&bytes, &expected).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let downloaded = dir.path().join("verified.exe");
+        fs::write(&downloaded, &bytes).unwrap();
+        let child = dir.path().join("replace-test.exe");
+        fs::copy(std::env::current_exe().unwrap(), &child).unwrap();
+        let status = crate::platform::command(&child)
+            .args([
+                "--ignored",
+                "--exact",
+                "updater::tests::replace_running_child",
+            ])
+            .env("FASTLY_UPDATE_TEST_FILE", &downloaded)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        assert_eq!(fs::read(&child).unwrap(), bytes);
+        assert!(fs::read_dir(dir.path()).unwrap().any(|e| {
+            e.unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".previous.exe")
+        }));
+    }
+    #[test]
+    #[ignore = "Internal child for live_update_download_and_replace"]
+    fn replace_running_child() {
+        let Some(fixture) = std::env::var_os("FASTLY_UPDATE_TEST_FILE") else {
+            return;
+        };
+        let bytes = fs::read(fixture).unwrap();
+        let expected = format!("{:x}", Sha256::digest(&bytes));
+        verify_exe(&bytes, &expected).unwrap();
+        replace_at(&std::env::current_exe().unwrap(), &bytes).unwrap();
+    }
     fn asset(name: &str) -> Asset {
         Asset {
             id: 1,

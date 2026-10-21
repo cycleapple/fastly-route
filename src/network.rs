@@ -681,6 +681,11 @@ mod tests {
         assert!(report.routes.iter().any(Route::measured));
         assert!(report.routes.iter().any(|r| r.baseline));
         assert!(report.routes.iter().all(|r| r.samples.len() <= 3));
+        crate::storage::save_at(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/live-scan.json"),
+            &report,
+        )
+        .unwrap();
         println!(
             "{} routes, {} measured, {} recommendations",
             report.routes.len(),
