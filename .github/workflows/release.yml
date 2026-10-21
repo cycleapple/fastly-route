@@ -1,0 +1,43 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check tag version
+        shell: pwsh
+        run: |
+          $version = [regex]::Match((Get-Content Cargo.toml -Raw), '(?m)^version = "([^"]+)"').Groups[1].Value
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match Cargo.toml version' }
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: cargo build --release --locked
+      - name: Package and publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $package = "fastly-route-$env:GITHUB_REF_NAME-windows-x64.zip"
+          New-Item -ItemType Directory -Force package/docs | Out-Null
+          Copy-Item target/release/fastly-route.exe,README.md,LICENSE,CHANGELOG.md package
+          Copy-Item docs/preview.png,docs/UPSTREAM-LICENSE package/docs
+          Copy-Item target/release/fastly-route.exe fastly-route.exe
+          Compress-Archive -Path package/* -DestinationPath $package
+          $lines = foreach ($file in @('fastly-route.exe', $package)) {
+            "$((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant())  $file"
+          }
+          $lines | Set-Content SHA256SUMS.txt -Encoding ascii
+          $releaseArgs = @('release', 'create', $env:GITHUB_REF_NAME, 'fastly-route.exe', $package, 'SHA256SUMS.txt', '--verify-tag', '--title', "Fastly Route $env:GITHUB_REF_NAME", '--generate-notes')
+          if ($env:GITHUB_REF_NAME.Contains('-')) { $releaseArgs += '--prerelease' }
+          gh @releaseArgs
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed; published assets were not overwritten' }

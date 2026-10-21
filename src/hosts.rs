@@ -1,10 +1,15 @@
-use crate::network::{Route, SERVICES};
+use crate::model::valid_domain;
 use anyhow::{Context, Result, bail};
 use std::{
     fs::{self, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
 };
+#[derive(Clone, Debug)]
+pub struct Entry {
+    pub domain: String,
+    pub ip: std::net::Ipv4Addr,
+}
 const BEGIN: &str = "# >>> Fastly Route >>>";
 const END: &str = "# <<< Fastly Route <<<";
 
@@ -46,7 +51,7 @@ pub fn remove_block(original: &[u8]) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-pub fn compose(original: &[u8], routes: &[Route]) -> Result<Vec<u8>> {
+pub fn compose(original: &[u8], routes: &[Entry]) -> Result<Vec<u8>> {
     let mut out = remove_block(original)?;
     if routes.is_empty() {
         return Ok(out);
@@ -54,12 +59,10 @@ pub fn compose(original: &[u8], routes: &[Route]) -> Result<Vec<u8>> {
     let text = String::from_utf8_lossy(&out);
     let mut domains = std::collections::HashSet::new();
     for route in routes {
-        let domain = SERVICES.get(route.service).context("未知服務")?.domain;
+        let domain = route.domain.as_str();
+        anyhow::ensure!(valid_domain(domain), "不合法的 hosts 網域");
         if !domains.insert(domain) {
             bail!("服務重複：{domain}");
-        }
-        if route.successes != 3 {
-            bail!("只能套用三輪測試皆成功的路線");
         }
         for line in text.lines() {
             let fields: Vec<_> = line
@@ -88,15 +91,13 @@ pub fn compose(original: &[u8], routes: &[Route]) -> Result<Vec<u8>> {
     }
     out.extend_from_slice(format!("{BEGIN}{nl}").as_bytes());
     for route in routes {
-        out.extend_from_slice(
-            format!("{} {}{nl}", route.ip, SERVICES[route.service].domain).as_bytes(),
-        );
+        out.extend_from_slice(format!("{} {}{nl}", route.ip, route.domain).as_bytes());
     }
     out.extend_from_slice(format!("{END}{nl}").as_bytes());
     Ok(out)
 }
 
-pub fn write_at(path: &Path, routes: &[Route]) -> Result<PathBuf> {
+pub fn write_at(path: &Path, routes: &[Entry]) -> Result<PathBuf> {
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -157,14 +158,10 @@ pub fn status() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn route() -> Route {
-        Route {
-            service: 0,
+    fn entry() -> Entry {
+        Entry {
+            domain: "raw.githubusercontent.com".into(),
             ip: "151.101.1.133".parse().unwrap(),
-            pop: "HKG".into(),
-            latency: 10.,
-            jitter: 1.,
-            successes: 3,
         }
     }
     #[test]
@@ -174,9 +171,9 @@ mod tests {
             b"",
             b"# hi\n",
         ] {
-            let applied = compose(original, &[route()]).unwrap();
+            let applied = compose(original, &[entry()]).unwrap();
             assert_eq!(remove_block(&applied).unwrap(), original);
-            assert_eq!(compose(&applied, &[route()]).unwrap(), applied);
+            assert_eq!(compose(&applied, &[entry()]).unwrap(), applied);
         }
     }
     #[test]
@@ -186,21 +183,21 @@ mod tests {
     }
     #[test]
     fn refuses_conflicts() {
-        assert!(compose(b"1.2.3.4 RAW.githubusercontent.com. # user\n", &[route()]).is_err());
+        assert!(compose(b"1.2.3.4 RAW.githubusercontent.com. # user\n", &[entry()]).is_err());
     }
     #[test]
-    fn refuses_partial_success() {
-        let mut r = route();
-        r.successes = 2;
+    fn rejects_injected_domain() {
+        let mut r = entry();
+        r.domain = "x.com\n1.1.1.1 evil.com".into();
         assert!(compose(b"", &[r]).is_err());
     }
     #[test]
     fn backup_and_restore_on_temp_file() {
-        let dir = tempfile::tempdir().unwrap();
-        let p = dir.path().join("hosts");
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("hosts");
         let old = b"127.0.0.1 localhost\n";
         fs::write(&p, old).unwrap();
-        let backup = write_at(&p, &[route()]).unwrap();
+        let backup = write_at(&p, &[entry()]).unwrap();
         assert_eq!(fs::read(backup).unwrap(), old);
         write_at(&p, &[]).unwrap();
         assert_eq!(fs::read(p).unwrap(), old);
