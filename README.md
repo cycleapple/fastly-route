@@ -2,7 +2,7 @@
 
 以 Rust + egui 打造的 Fastly 路線工具：原生桌面、繁體中文、極簡介面，Windows 啟動與背景操作不顯示 CMD 視窗。
 
-![Fastly Route](docs/preview.png)
+![Fastly Route](docs/preview.jpg)
 
 ## 下載與開始
 

@@ -30,7 +30,7 @@ jobs:
           $package = "fastly-route-$env:GITHUB_REF_NAME-windows-x64.zip"
           New-Item -ItemType Directory -Force package/docs | Out-Null
           Copy-Item target/release/fastly-route.exe,README.md,LICENSE,CHANGELOG.md package
-          Copy-Item docs/preview.png,docs/UPSTREAM-LICENSE package/docs
+          Copy-Item docs/preview.jpg,docs/UPSTREAM-LICENSE package/docs
           Copy-Item target/release/fastly-route.exe fastly-route.exe
           Compress-Archive -Path package/* -DestinationPath $package
           $lines = foreach ($file in @('fastly-route.exe', $package)) {
