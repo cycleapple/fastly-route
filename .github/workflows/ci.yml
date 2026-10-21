@@ -17,7 +17,3 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
       - run: cargo build --release --locked
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fastly-route-windows-x64
-          path: target/release/fastly-route.exe
