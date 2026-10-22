@@ -6,9 +6,9 @@
 
 ## 下載與開始
 
-在 [Releases](https://github.com/cycleapple/fastly-route/releases) 下載 Windows x64 壓縮包，解壓後執行 `fastly-route.exe`。也可下載獨立 exe。repo 目前為私人，需要有存取權限的 GitHub 帳號。
+在 [Releases](https://github.com/cycleapple/fastly-route/releases) 下載 Windows x64 壓縮包，解壓後執行 `fastly-route.exe`。也可下載獨立 exe。repo 已公開，下載與自動更新不需要登入 GitHub。
 
-1. 勾選 GitHub、X、Twitch 或自訂服務。
+1. 勾選 GitHub、X、Twitch、Steam 商店或自訂服務。舊版使用者升級後需自行勾選新增的 Steam 商店，既有服務選擇保持不變。
 2. 按「掃描＋大檔測速」，或用「只看節點延遲」快速查找。
 3. 比較路線、選取需要變更的服務，按「套用所選路線」。
 4. 確認預覽後會重新驗證、備份並寫入 hosts。切換網路或要回到預設時按「還原系統路線」。
@@ -33,7 +33,10 @@
 | GitHub | `raw.githubusercontent.com`、`release-assets.githubusercontent.com` |
 | X 圖片 | `pbs.twimg.com` |
 | Twitch | `www.twitch.tv`、`gql.twitch.tv`、`static-cdn.jtvnw.net`、`assets.twitch.tv`、`k.twitchcdn.net` |
+| Steam 商店 | `store.fastly.steamstatic.com`、`cdn.fastly.steamstatic.com`、`shared.fastly.steamstatic.com` |
 | 自訂 | 通過驗證的 Fastly 網域 |
+
+Steam 商店以官方約 1.3 MB 圖片做三輪實際下載取樣，顯示速度中位數與穩定度；此數值是該圖片的傳輸速度，不代表整頁載入時間或線路最大頻寬。套用時驗證並一起寫入上述三個 Fastly 網域，不包含 `store.steampowered.com`、登入、Akamai 資源或遊戲下載。可使用「測速後準備套用」完成掃描並開啟確認預覽，再一次套用全部三個網域。
 
 Twitch 只處理網頁、圖片、API 與表情符號，**不包含直播影片與聊天室**。
 

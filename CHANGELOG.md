@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Add Steam Store as a built-in service with Fastly scanning, three-round image download benchmarks, stability ranking and grouped hosts apply/restore.
+- Cover store.fastly.steamstatic.com, cdn.fastly.steamstatic.com and shared.fastly.steamstatic.com; leave the store origin, authentication and game downloads unchanged.
+- Include all three static hosts' DNS addresses in default-route comparisons and preserve existing users' service selections.
+- Document public, login-free downloads and updates.
+
 ## 0.2.0
 
 - Add real three-round large-file benchmarks, stability ranking and default-route comparison.

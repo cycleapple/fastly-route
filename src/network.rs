@@ -450,6 +450,14 @@ pub fn scan(
             format!("{} · 掃描 TCP 路線", s.name),
         ));
         let mut base = resolve(&s.domain).unwrap_or_default();
+        if s.benchmark == Benchmark::Steam {
+            // Steam's static hosts can resolve to different default edges.
+            for host in &s.hosts {
+                base.extend(resolve(&host.domain).unwrap_or_default());
+            }
+            base.sort();
+            base.dedup();
+        }
         // The content and download hosts can have different default DNS routes.
         // Compare the actual download origin as well, not only the small probe file.
         let download_domain = match s.benchmark {
@@ -547,6 +555,7 @@ pub fn scan(
             }
             let static_url = match &s.benchmark {
                 Benchmark::Twitch => twitch_url(&routes),
+                Benchmark::Steam => Ok(format!("https://{}{}", s.domain, s.probe_path)),
                 Benchmark::Url(u) => Ok(u.clone()),
                 Benchmark::None => Err(anyhow::anyhow!("未設定測速檔")),
                 _ => Ok(String::new()),
@@ -596,6 +605,7 @@ pub fn scan(
                                 Benchmark::ViaGithub => "GitHub 同 POP 代理測速",
                                 Benchmark::Github => "GitHub Release 大檔",
                                 Benchmark::Twitch => "Twitch 網頁程式檔",
+                                Benchmark::Steam => "Steam 商店圖片（約 1.3 MB）",
                                 _ => "自訂測速檔",
                             }
                             .into();
@@ -660,6 +670,62 @@ pub fn verify_route(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "Live Steam scan and three-round downloads; hosts writes use a temporary file"]
+    fn live_steam_scan_and_apply() {
+        let service = crate::model::builtins()
+            .into_iter()
+            .find(|s| s.id == "steam")
+            .unwrap();
+        let output = std::sync::Mutex::new(None);
+        scan(
+            vec![service.clone()],
+            ScanOptions::default(),
+            Arc::new(AtomicBool::new(false)),
+            |event| match event {
+                Event::Progress(_, text) => println!("{text}"),
+                Event::Done(report) => *output.lock().unwrap() = Some(report),
+                _ => {}
+            },
+        )
+        .unwrap();
+        let report = output.into_inner().unwrap().unwrap();
+        assert!(report.routes.iter().any(|r| r.baseline));
+        let best = report.routes.iter().find(|r| r.measured()).unwrap();
+        assert_eq!(best.samples.len(), 3);
+        assert!(
+            best.samples
+                .iter()
+                .all(|s| s.error.is_none() && s.bytes >= 256 * 1024)
+        );
+        assert!(best.source.contains("Steam"));
+        let entries = verify_route(&service, best, &ranges().unwrap()).unwrap();
+        assert_eq!(entries.len(), 3);
+        assert!(
+            entries
+                .iter()
+                .all(|e| e.domain.ends_with(".fastly.steamstatic.com"))
+        );
+        let temp = tempfile::tempdir().unwrap();
+        let hosts = temp.path().join("hosts");
+        let original = b"127.0.0.1 localhost\r\n";
+        std::fs::write(&hosts, original).unwrap();
+        crate::hosts::write_at(&hosts, &entries).unwrap();
+        let applied = std::fs::read_to_string(&hosts).unwrap();
+        for entry in &entries {
+            assert!(applied.contains(&format!("{} {}", entry.ip, entry.domain)));
+        }
+        assert!(!applied.contains("store.steampowered.com"));
+        crate::hosts::write_at(&hosts, &[]).unwrap();
+        assert_eq!(std::fs::read(&hosts).unwrap(), original);
+        println!(
+            "Steam: {} routes; best {} / {} / {:.2} Mbps; all three hosts verified, applied and restored in a temporary file",
+            report.routes.len(),
+            best.ip,
+            best.pop,
+            best.median
+        );
+    }
     #[test]
     #[ignore = "Full network scan, up to several hundred MiB"]
     fn live_full_scan() {

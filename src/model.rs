@@ -6,6 +6,7 @@ use std::{collections::BTreeSet, net::Ipv4Addr};
 pub enum Benchmark {
     Github,
     Twitch,
+    Steam,
     ViaGithub,
     Url(String),
     None,
@@ -49,6 +50,20 @@ pub fn builtins() -> Vec<Service> {
             suffix: 159,
             hosts: vec![host("pbs.twimg.com", 159)],
             benchmark: Benchmark::ViaGithub,
+            custom: false,
+        },
+        Service {
+            id: "steam".into(),
+            name: "Steam 商店".into(),
+            domain: "cdn.fastly.steamstatic.com".into(),
+            probe_path: "/store/home/store_home_share.jpg".into(),
+            suffix: 52,
+            hosts: vec![
+                host("store.fastly.steamstatic.com", 52),
+                host("cdn.fastly.steamstatic.com", 52),
+                host("shared.fastly.steamstatic.com", 52),
+            ],
+            benchmark: Benchmark::Steam,
             custom: false,
         },
         Service {
@@ -166,7 +181,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             custom: vec![],
-            enabled: ["github", "x", "twitch"].map(str::to_owned).into(),
+            enabled: ["github", "x", "twitch", "steam"].map(str::to_owned).into(),
             auto_check: true,
             prerelease: false,
             global: false,

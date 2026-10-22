@@ -866,10 +866,10 @@ impl App {
     }
     fn help_ui(&self, ui: &mut egui::Ui) {
         card().show(ui,|ui|{ui.set_width(ui.available_width());for(title,body)in[
-        ("01  選擇服務與地區","GitHub、X、Twitch 與自訂服務各自驗證。全球掃描列出所有可連線節點；\n指定三碼地區會完整搜尋該地區，系統目前路線仍會加入比較。"),
+        ("01  選擇服務與地區","GitHub、X、Twitch、Steam 與自訂服務各自驗證。全球掃描列出所有可連線節點；\n指定三碼地區會完整搜尋該地區，系統目前路線仍會加入比較。"),
         ("02  交錯大檔測速","附近最快的 10 條候選與系統路線交錯測 3 輪，每輪最多 8 MiB / 約 2 秒。\n順暢 = 本次峰值的 30% 以上，且至少 3 Mbps；以順暢次數、速度中位數、延遲排序。\n測速流量隨服務與路線數增加，可能達數百 MiB。逾時上限為每次請求 5 秒。"),
         ("03  選擇與套用","系統路線同樣順暢時不建議變更；也能手動選擇或依地區篩選。\n快取僅供選擇，套用前重新驗證官方網段、TLS 與機房。變更前備份 hosts。"),
-        ("服務限制","X 圖片太小，借用同 /24 且相同 POP 的 GitHub 測速，表格明確標示代理值。\nTwitch 使用網頁 JS 測速，支援網頁、圖片與 API，不涵蓋直播影片或聊天室。\n自訂網域必須目前由 Fastly 提供 IPv4。沒有可用測速檔時只依延遲。"),
+        ("服務限制","X 圖片太小，借用同 /24 且相同 POP 的 GitHub 測速，表格明確標示代理值。\nTwitch 使用網頁 JS 測速，支援網頁、圖片與 API，不涵蓋直播影片或聊天室。\nSteam 僅涵蓋商店 Fastly 靜態資源，不含主站、登入與遊戲下載。\n自訂網域必須目前由 Fastly 提供 IPv4。沒有可用測速檔時只依延遲。"),
         ("更新與隱私","啟動時可自動檢查更新，發現新版後由你按下載安裝，再重新啟動生效。\n無遙測。掃描採直接連線，不使用 HTTP 代理；VPN 仍可能影響路線。")
     ]{ui.label(RichText::new(title).strong().size(17.));small(ui,body);ui.add_space(12.);}ui.hyperlink_to("原始碼與版本下載","https://github.com/cycleapple/fastly-route");});
     }
